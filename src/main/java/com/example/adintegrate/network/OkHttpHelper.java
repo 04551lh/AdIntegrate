@@ -4,17 +4,13 @@ import android.annotation.TargetApi;
 import android.os.Build;
 import android.util.Log;
 
+import org.jetbrains.annotations.NotNull;
+
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.concurrent.ConcurrentHashMap;
+import java.net.ConnectException;
+import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 
-import okhttp3.Cookie;
-import okhttp3.CookieJar;
-import okhttp3.HttpUrl;
-import okhttp3.MediaType;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.RequestBody;
@@ -28,8 +24,6 @@ import okhttp3.logging.HttpLoggingInterceptor;
  */
 public class OkHttpHelper {
     private final static String TAG = "OkHttpHelper";
-    //网络请求日志打印
-    private HttpLoggingInterceptor mLogging;
     //网络请求
     private OkHttpClient mOkHttpClient;
 
@@ -38,19 +32,11 @@ public class OkHttpHelper {
     private final static int WRITE_TIMEOUT = 3;
     private static OkHttpHelper instance = null;
 
-    public HashMap<String, List<Cookie>> getCookieStore() {
-        return cookieStore;
-    }
-
-    public void setCookieStore(HashMap<String, List<Cookie>> cookieStore) {
-        this.cookieStore = cookieStore;
-    }
-
-    private HashMap<String, List<Cookie>> cookieStore = new HashMap<String, List<Cookie>>();
     private OkHttpHelper() {
-        mLogging = new HttpLoggingInterceptor(new HttpLoggingInterceptor.Logger() {
+        //网络请求日志打印
+        HttpLoggingInterceptor mLogging = new HttpLoggingInterceptor(new HttpLoggingInterceptor.Logger() {
             @Override
-            public void log(String message) {
+            public void log(@NotNull String message) {
                 Log.i(TAG, message);
             }
         });
@@ -61,18 +47,6 @@ public class OkHttpHelper {
                 .readTimeout(READ_TIMEOUT, TimeUnit.SECONDS)
                 .writeTimeout(WRITE_TIMEOUT, TimeUnit.SECONDS)
                 .addInterceptor(mLogging)
-                .cookieJar(new CookieJar() {
-                    @Override
-                    public void saveFromResponse(HttpUrl url, List<Cookie> cookies) {
-                        cookieStore.put(url.host(), cookies);
-                    }
-
-                    @Override
-                    public List<Cookie> loadForRequest(HttpUrl url) {
-                        List<Cookie> cookies = cookieStore.get(url.host());
-                        return cookies != null ? cookies : new ArrayList<Cookie>();
-                    }
-                })
                 .build();
     }
 
@@ -90,8 +64,12 @@ public class OkHttpHelper {
                 .url(url)
                 .post(body)
                 .build();
+
+//        Request request = addHeader(url,body);
         try (Response response = mOkHttpClient.newCall(request).execute()) {
-            return response.body().string();
+            return Objects.requireNonNull(response.body()).string();
+        } catch (ConnectException e) {
+            e.printStackTrace();
         } catch (IOException e) {
             e.printStackTrace();
         }

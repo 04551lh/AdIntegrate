@@ -30,7 +30,7 @@ public class Constant {
     //html/js
     public static final String HTML_JS = "html/js";
     //求情头部替换
-    public static final String USER_AGNRT = "User-Agent";
+    public static final String USER_AGENT = "User-Agent";
     public static final String REFERER = "Referer";
 
     //DIRECT:只替换浏览器直接发出的请求;
@@ -39,6 +39,13 @@ public class Constant {
     public static final String INDIRECT = "INDIRECT";
     //ALL:替换包括DIRECT和INDIRECT覆盖的所有请求
     public static final String ALL = "ALL";
+
+    public static final String ID = "id";
+    //os=0的时候是imei，os=1的时候是idfa
+    public static final String OS = "__OS__";
+    public static final String IP = "__IP__";
+    public static final String IMEI = "__IMEI__";
+    public static final String IDFA = "__IDFA__";
 
     //基础URL
     public static final String BASE_URL = "http://172.16.0.188:9220/";

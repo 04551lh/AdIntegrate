@@ -13,7 +13,7 @@ public class RandomSelectionUtil {
 
     public static int getRandomNumber(int min,int max){
         Random random = new Random();
-        return random.nextInt(Constant.MAX) % (Constant.MAX - Constant.MIN + 1) + Constant.MIN;
+        return random.nextInt(max) % (max - min + 1) + min;
     }
 
 
