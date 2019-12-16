@@ -3,6 +3,7 @@ package com.example.adintegrate;
 import android.annotation.SuppressLint;
 import android.annotation.TargetApi;
 import android.app.Activity;
+import android.graphics.Bitmap;
 import android.net.TrafficStats;
 import android.os.Build;
 import android.os.Bundle;
@@ -43,8 +44,13 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.Timer;
 import java.util.TimerTask;
+
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
+import okhttp3.Response;
 
 public class MainActivity extends Activity {
 
@@ -77,7 +83,8 @@ public class MainActivity extends Activity {
     //加载的Webview
     private WebView mWebView;
     //User-Agent和Referer
-    private Map<String, String> mHeaderParams;
+    private String mUserAgentValue = "";
+    private Map<String, String> mRefererParams;
 
     private String mReferer;
     private String mRefererTarget;
@@ -105,7 +112,7 @@ public class MainActivity extends Activity {
             if (msg.what == 0) {
                 if (mInitExecTimes < mExecTimes) {
                     mMyTimerUtil.setCurrentSecond(0);
-                    myLoadHeaderUrl(mRefererTarget,mReplaceTargetParams,mDataBean.getUrl());
+                    myLoadHeaderUrl(mReplaceTargetParams, mDataBean.getUrl());
                 } else {
                     mTimer.cancel();
                     if (mClose) {
@@ -124,20 +131,24 @@ public class MainActivity extends Activity {
 
         }
         initData();
+
         firstRequest();
 
-        try{
-        cookieManager.setCookie(mDataBean.getUrl(), "");}catch (NullPointerException e){
-            Log.i(TAG,"NullPointerException--------->"+e.toString());
+        try {
+            cookieManager.setCookie(mDataBean.getUrl(), "");
+        } catch (NullPointerException e) {
+            Log.i(TAG, "NullPointerException--------->" + e.toString());
         }
         WebSettings webSettings = mWebView.getSettings();
         webSettings.setJavaScriptEnabled(true);
         webSettings.setLoadWithOverviewMode(true);
 
-        webSettings.setUserAgentString(mHeaderParams.get(Constant.USER_AGENT));
+        if (!mUserAgentValue.equals("")) {
+            webSettings.setUserAgentString(mUserAgentValue);
+        }
         mWebView.setLayoutParams(new ViewGroup.LayoutParams(mW, mH));
 
-        myLoadHeaderUrl(mRefererTarget, mReplaceTargetParams, mDataBean.getUrl());
+        myLoadHeaderUrl(mReplaceTargetParams, mDataBean.getUrl());
         mWebView.setWebViewClient(mWebViewClient);
         setContentView(mWebView);
     }
@@ -151,8 +162,10 @@ public class MainActivity extends Activity {
         mW = 0;
         mH = 0;
 
-        mHeaderParams = new HashMap<>();
+        mRefererParams = new HashMap<>();
+
         mRefererTarget = "";
+
         mReplaceUrlList = new ArrayList<>();
         mReplaceParams = new HashMap<>();
         mReplaceTargetParams = new HashMap<>();
@@ -181,7 +194,7 @@ public class MainActivity extends Activity {
                 String url = request.getUrl().toString().trim();
                 boolean isReplace = false;
                 if (!TextUtils.isEmpty(url)) {
-                    for (Map.Entry<String, String> map:mReplaceTargetParams.entrySet()) {
+                    for (Map.Entry<String, String> map : mReplaceTargetParams.entrySet()) {
                         if (map.getValue().equals(Constant.INDIRECT) || map.getValue().equals(Constant.ALL)) {
                             for (Map.Entry<String, String> entry : mReplaceParams.entrySet()) {
                                 if (entry.getValue().equals(Constant.OS)) {
@@ -202,31 +215,19 @@ public class MainActivity extends Activity {
                     }
                     if (isReplace) {
                         Log.i(TAG, "url：" + url);
-                        StringBuilder stringBuilder = myLoadResource(Constant.ALL, url);
+                        for (Map.Entry<String, String> entry : request.getRequestHeaders().entrySet()) {
+                            Log.i("entryName", "----------------->" + entry.getKey());
+                            Log.i("entryValue", "---------------->" + entry.getValue());
+                        }
+
+                        StringBuilder stringBuilder = myLoadResource(mRefererTarget, url);
                         return new WebResourceResponse("", "", new ByteArrayInputStream(stringBuilder.toString().getBytes()));
+                    } else {
+                        String myUrl = request.getUrl().toString();
+                        return getNewResponse(myUrl, request.getRequestHeaders());
                     }
                 }
-                if(mRefererTarget.equals(Constant.DIRECT) || mRefererTarget.equals(Constant.ALL)){
-                    request.getRequestHeaders().put(Constant.REFERER,mReferer);
-                    view.loadUrl(request.getUrl().toString(),mHeaderParams);
-                }
-                for (Map.Entry<String,String> entry: request.getRequestHeaders().entrySet()) {
-                    Log.i("entryName","----------------->"+entry.getKey());
-                    Log.i("entryValue","---------------->"+entry.getValue());
-                }
-                Log.i("loadUrl","--------------->"+url);
                 return super.shouldInterceptRequest(view, request);
-            }
-
-
-            @TargetApi(Build.VERSION_CODES.LOLLIPOP)
-            @Override
-            public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
-                if (request.getUrl().toString().contains("http") || request.getUrl().toString().contains("https")) {
-                    mWebView.loadUrl(request.getUrl().toString(), mHeaderParams);
-                    return true;
-                }
-                return super.shouldOverrideUrlLoading(view, request);
             }
 
             @Override
@@ -237,6 +238,9 @@ public class MainActivity extends Activity {
                 mMyTimerUtil.setPause(true);
                 totalTime = mMyTimerUtil.getCurrentSecond();
                 mInitExecTimes++;
+                if(mTimer == null){
+                    mTimer = new Timer();
+                }
                 mTimer.schedule(new TimerTask() {
                     @Override
                     public void run() {                // (1) 使用handler发送消息
@@ -275,9 +279,13 @@ public class MainActivity extends Activity {
 
         Log.i(TAG, mStartByte + "");
         Log.i(TAG, ObtainUtil.FormetFileSize(mStartByte) + "");
-        String response = mOkHttpHelper.post(Constant.TASK_URL, json);
-        Log.i(TAG,"response："+response);
-        if(response.contains("Server Error")){
+        String response = "";
+        try {
+            response = mOkHttpHelper.post(Constant.TASK_URL, json);
+        }catch (NullPointerException e){
+            Toast.makeText(MainActivity.this, "服务器异常~", Toast.LENGTH_SHORT).show();
+        }
+        if (response.contains("Server Error")) {
             Toast.makeText(MainActivity.this, "Server Error~", Toast.LENGTH_SHORT).show();
             mMyTimerUtil.setPause(true);
             return;
@@ -296,7 +304,8 @@ public class MainActivity extends Activity {
         }
 
         if (!TextUtils.isEmpty(messageBean.getUa())) {
-            mHeaderParams.put(Constant.USER_AGENT, messageBean.getUa());
+            mUserAgentValue = messageBean.getUa();
+//            mHeaderParams.put(Constant.USER_AGENT, messageBean.getUa());
         }
         int refererSize = messageBean.getReferer() == null ? 0 : messageBean.getReferer().getValues().size();
         if (refererSize > 0) initReplaceReferer(messageBean.getReferer(), refererSize);
@@ -320,8 +329,11 @@ public class MainActivity extends Activity {
         //todo 随机生成
         int randomNumber = RandomSelectionUtil.getRandomNumber(0, refererSize);
         mReferer = refererBean.getValues().get(randomNumber);
-        mHeaderParams.put(Constant.REFERER, mReferer);
+        Log.i(TAG, "initReplaceReferer：mReferer--------------------->" + mReferer);
+        mRefererParams.put(Constant.REFERER, mReferer);
+        Log.i(TAG, "mHeaderParams：put--------------------->" + mRefererParams.toString());
         mRefererTarget = refererBean.getTarget();
+        Log.i(TAG, "initReplaceReferer：mRefererTarget--------------------->" + mRefererTarget);
     }
 
     private void initReplaceUrlParems(List<TaskBean.DataBean.MessageBean.ReplaceBean> replaceBeanList) {
@@ -329,21 +341,20 @@ public class MainActivity extends Activity {
             String tag = replaceBean.getTag();
             String value = replaceBean.getValue();
             String target = replaceBean.getTarget();
-            mReplaceUrlList.add(new ReplaceUrlBean(tag,value,target));
+            mReplaceUrlList.add(new ReplaceUrlBean(tag, value, target));
             mReplaceParams.put(tag, value);
-            mReplaceTargetParams.put(tag,target) ;
+            mReplaceTargetParams.put(tag, target);
         }
     }
 
-    private void myLoadHeaderUrl(String targetHeader, Map<String, String> mReplaceTargetParams, String url) {
+    private void myLoadHeaderUrl(Map<String, String> mReplaceTargetParams, String url) {
         url = myReplaceParams(mReplaceTargetParams, url);
-        if (targetHeader.equals(Constant.DIRECT) || targetHeader.equals(Constant.ALL)) {
+        if (mRefererTarget.equals(Constant.DIRECT) || mRefererTarget.equals(Constant.ALL)) {
             if (mLoadType.equals(Constant.URL_JUMP)) {
-                Log.i(TAG, "mHeaderParams：--------------------->" + new Gson().toJson(mHeaderParams));
-                Log.i(TAG, "mHeaderParams：--------------------->" + mReferer);
-                mHeaderParams.put(Constant.REFERER,mReferer);
-                Log.i(TAG, "mHeaderParams：--------------------->" + mHeaderParams.toString());
-                mWebView.loadUrl(url, mHeaderParams);
+                Log.i(TAG, "mHeaderParams：mLoadType--------------------->" + new Gson().toJson(mRefererParams));
+                mWebView.loadUrl(url, mRefererParams);
+//                mRefererParams.put(Constant.REFERER,mReferer);
+                Log.i(TAG, "mHeaderParams：mLoadType2--------------------->" + new Gson().toJson(mRefererParams));
             } else {
                 mWebView.loadDataWithBaseURL(null, url, "application/json", "utf-8", null);
             }
@@ -351,6 +362,7 @@ public class MainActivity extends Activity {
             mWebView.loadUrl(url);
         }
     }
+
 
     private StringBuilder myLoadResource(String targetHeader, String url) {
         StringBuilder stringBuilder = new StringBuilder();
@@ -361,9 +373,12 @@ public class MainActivity extends Activity {
             httpURLConnection.setConnectTimeout(10 * 1000);
             httpURLConnection.setReadTimeout(10 * 1000);
             if (targetHeader.equals(Constant.INDIRECT) || targetHeader.equals(Constant.ALL)) {
-                Log.i(TAG,"mReferer----->"+ mReferer);
-                httpURLConnection.setRequestProperty(Constant.REFERER,mReferer);
-                httpURLConnection.setRequestProperty(Constant.USER_AGENT, mHeaderParams.get(Constant.USER_AGENT));
+                httpURLConnection.setRequestProperty(Constant.REFERER, mReferer);
+            } else{
+                httpURLConnection.setRequestProperty(Constant.REFERER,mDataBean.getUrl());
+            }
+            if (!mUserAgentValue.equals("")) {
+                httpURLConnection.setRequestProperty(Constant.USER_AGENT, mUserAgentValue);
             }
             bufferedReader = new BufferedReader(new InputStreamReader(httpURLConnection.getInputStream()));
             String line;
@@ -384,7 +399,7 @@ public class MainActivity extends Activity {
 
     private String myReplaceParams(Map<String, String> mReplaceTargetParams, String url) {
         String realUrl = url;
-        for (Map.Entry<String, String> map:mReplaceTargetParams.entrySet()) {
+        for (Map.Entry<String, String> map : mReplaceTargetParams.entrySet()) {
             if (map.getValue().equals(Constant.DIRECT) || map.getValue().equals(Constant.ALL)) {
                 for (Map.Entry<String, String> entry : mReplaceParams.entrySet()) {
                     if (entry.getValue().equals(Constant.OS)) {
@@ -398,11 +413,11 @@ public class MainActivity extends Activity {
                     }
                     if (url.contains(entry.getKey())) {
                         realUrl = url.replace(entry.getKey(), entry.getValue());
-                        Log.i("realUrl","realUrl"+realUrl);
                     }
                 }
             }
         }
+        Log.i("realUrl", "realUrl" + realUrl);
         return realUrl;
     }
 
@@ -434,4 +449,31 @@ public class MainActivity extends Activity {
         }
         super.onDestroy();
     }
+
+    private WebResourceResponse getNewResponse(String url, Map<String, String> headers) {
+        try {
+            OkHttpClient httpClient = new OkHttpClient();
+            Request.Builder builder = new Request.Builder().url(url.trim()).addHeader(Constant.REFERER,mReferer);
+            Set<String> keySet = headers.keySet();
+            for (String key : keySet) {
+                builder.addHeader(key, headers.get(key));
+            }
+            Request request = builder.build();
+            final Response response = httpClient.newCall(request).execute();
+            String conentType = response.header("Content-Type", response.body().contentType().type());
+            String temp = conentType.toLowerCase();
+            if (temp.contains("charset=utf-8")) {
+                conentType = conentType.replaceAll("(?i)" + "charset=utf-8", "");
+                //不区分大小写的替换
+            }
+            if (conentType.contains(";")) {
+                conentType = conentType.replaceAll(";", "");
+                conentType = conentType.trim();
+            }
+            return new WebResourceResponse(conentType, response.header("Content-Encoding", "utf-8"), response.body().byteStream());
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
 }

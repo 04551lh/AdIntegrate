@@ -19,3 +19,7 @@
 # If you keep the line number information, uncomment this to
 # hide the original source file name.
 #-renamesourcefileattribute SourceFile
+
+#腾讯上传报错日志
+-dontwarn com.tencent.bugly.**
+-keep public class com.tencent.bugly.**{*;}
