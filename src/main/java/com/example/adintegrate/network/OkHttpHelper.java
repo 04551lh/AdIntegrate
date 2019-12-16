@@ -4,10 +4,13 @@ import android.annotation.TargetApi;
 import android.os.Build;
 import android.util.Log;
 
+import com.example.adintegrate.utils.MyException;
+
 import org.jetbrains.annotations.NotNull;
 
 import java.io.IOException;
 import java.net.ConnectException;
+import java.net.UnknownHostException;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 
@@ -31,6 +34,17 @@ public class OkHttpHelper {
     private final static int READ_TIMEOUT = 3;
     private final static int WRITE_TIMEOUT = 3;
     private static OkHttpHelper instance = null;
+
+    public MyException getMyException() {
+        return myException;
+    }
+
+    public void setMyException(MyException myException) {
+        this.myException = myException;
+    }
+
+    private MyException myException;
+
 
     private OkHttpHelper() {
         //网络请求日志打印
@@ -68,9 +82,14 @@ public class OkHttpHelper {
 //        Request request = addHeader(url,body);
         try (Response response = mOkHttpClient.newCall(request).execute()) {
             return Objects.requireNonNull(response.body()).string();
+        } catch (UnknownHostException e) {
+            myException.show("服务器异常，请重新再试~"+e.toString());
+            e.printStackTrace();
         } catch (ConnectException e) {
+            myException.show("服务器异常，请重新再试~"+e.toString());
             e.printStackTrace();
         } catch (IOException e) {
+            myException.show("服务器异常，请重新再试~"+e.toString());
             e.printStackTrace();
         }
         return null;

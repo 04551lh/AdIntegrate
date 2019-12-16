@@ -3,7 +3,6 @@ package com.example.adintegrate;
 import android.annotation.SuppressLint;
 import android.annotation.TargetApi;
 import android.app.Activity;
-import android.graphics.Bitmap;
 import android.net.TrafficStats;
 import android.os.Build;
 import android.os.Bundle;
@@ -29,6 +28,7 @@ import com.example.adintegrate.bean.SucceedBean;
 import com.example.adintegrate.bean.TaskBean;
 import com.example.adintegrate.network.Constant;
 import com.example.adintegrate.network.OkHttpHelper;
+import com.example.adintegrate.utils.MyException;
 import com.example.adintegrate.utils.MyTimerUtil;
 import com.example.adintegrate.utils.ObtainUtil;
 import com.example.adintegrate.utils.RandomSelectionUtil;
@@ -52,7 +52,7 @@ import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
 
-public class MainActivity extends Activity {
+public class MainActivity extends Activity implements MyException {
 
     private final static String TAG = "MainActivity";
     //请求数据
@@ -185,6 +185,7 @@ public class MainActivity extends Activity {
         mRequestBean.setIp(mIP);
 
         mOkHttpHelper = OkHttpHelper.getInstance();
+        mOkHttpHelper.setMyException(this);
         mMyTimerUtil = MyTimerUtil.getInstance();
         mWebViewClient = new WebViewClient() {
 
@@ -282,6 +283,7 @@ public class MainActivity extends Activity {
         String response = "";
         try {
             response = mOkHttpHelper.post(Constant.TASK_URL, json);
+
         }catch (NullPointerException e){
             Toast.makeText(MainActivity.this, "服务器异常~", Toast.LENGTH_SHORT).show();
         }
@@ -290,9 +292,14 @@ public class MainActivity extends Activity {
             mMyTimerUtil.setPause(true);
             return;
         }
+        Log.i(TAG,"response："+response);
+        if(response.contains(" HTTP 404")){
+            Toast.makeText(MainActivity.this, "服务器异常~", Toast.LENGTH_SHORT).show();
+            return;
+        }
         mTaskBean = new Gson().fromJson(response, TaskBean.class);
         if (mTaskBean == null) {
-            Toast.makeText(MainActivity.this, "网络异常~", Toast.LENGTH_SHORT).show();
+            Toast.makeText(MainActivity.this, "服务器异常~", Toast.LENGTH_SHORT).show();
             return;
         }
         TaskBean.DataBean.MessageBean messageBean = mTaskBean.getData().getMessage();
@@ -476,4 +483,8 @@ public class MainActivity extends Activity {
         }
     }
 
+    @Override
+    public void show(String str) {
+        Toast.makeText(MainActivity.this, str, Toast.LENGTH_SHORT).show();
+    }
 }
