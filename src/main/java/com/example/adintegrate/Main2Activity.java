@@ -23,14 +23,13 @@ public class Main2Activity extends Activity {
     @Override
     protected void onResume() {
         super.onResume();
-        Log.i("isFirst", isFirst + "");
         if (!isFirst) {
             isFirst = true;
             return;
         }
         number = RandomSelectionUtil.getRandomNumber(300, 900);
         Log.i("Main2Activity", "随机数：" + number);
-        new Runnable() {
+       new Runnable() {
             @Override
             public void run() {
                 timer = timer + 1;
@@ -60,5 +59,11 @@ public class Main2Activity extends Activity {
 //        intent.setClassName(packageName, className);startService(intent);//或者bindService(intent, mConnection, Context.BIND_AUTO_CREATE); 都能启动
 
         startActivity(new Intent(Main2Activity.this, MainActivity.class));
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        timer = number;
     }
 }

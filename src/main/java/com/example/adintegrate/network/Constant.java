@@ -48,8 +48,8 @@ public class Constant {
     public static final String IDFA = "__IDFA__";
 
     //基础URL
-//    public static final String BASE_URL = "http://172.16.0.188:9220/";
-    public static final String BASE_URL = "http://cloud.background.adasplus.com/";
+    public static final String BASE_URL = "http://172.16.0.188:9220/";
+//    public static final String BASE_URL = "http://serviceadv.adasplus.com/";
     public static final String TASK_URL =  BASE_URL+"task";
     public static final String REPORT_URL = BASE_URL+"report";
 

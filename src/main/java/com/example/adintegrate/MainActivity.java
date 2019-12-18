@@ -6,6 +6,7 @@ import android.app.Activity;
 import android.net.TrafficStats;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Environment;
 import android.os.Handler;
 import android.os.Message;
 import android.os.StrictMode;
@@ -24,6 +25,7 @@ import android.widget.Toast;
 
 import com.example.adintegrate.bean.ReplaceUrlBean;
 import com.example.adintegrate.bean.RequestBean;
+import com.example.adintegrate.bean.RespomseSuccessBean;
 import com.example.adintegrate.bean.SucceedBean;
 import com.example.adintegrate.bean.TaskBean;
 import com.example.adintegrate.network.Constant;
@@ -36,29 +38,27 @@ import com.google.gson.Gson;
 
 import java.io.BufferedReader;
 import java.io.ByteArrayInputStream;
+import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.Timer;
 import java.util.TimerTask;
-
-import okhttp3.OkHttpClient;
-import okhttp3.Request;
-import okhttp3.Response;
 
 public class MainActivity extends Activity implements MyException {
 
     private final static String TAG = "MainActivity";
     //请求数据
     private RequestBean mRequestBean;
-    //接收网络数据
-    private TaskBean mTaskBean;
     //上传网络数据
     private SucceedBean mSucceedBean;
     private SucceedBean.DataBean mDataBean;
@@ -90,17 +90,21 @@ public class MainActivity extends Activity implements MyException {
     private String mRefererTarget;
     //替换参数
     private List<ReplaceUrlBean> mReplaceUrlList;
-    private Map<String, String> mReplaceParams;
-    private Map<String, String> mReplaceTargetParams;
+//    private Map<String, String> mReplaceParams;
+//    private Map<String, String> mReplaceTargetParams;
     //是否关闭
     private boolean mClose;
     //统计流量
     private long mStartByte, mEndByte;
+    private long mRxBytesStart, mTxBytesStart;
+    private long mRxBytesEnd, mTxBytesEnd;
     //webview 宽高
     private int mH, mW;
     //Imei,ip
     private String mIMEI;
     private String mIP;
+    //uid
+    private int mUid;
 
     private CookieManager cookieManager = CookieManager.getInstance();
 
@@ -110,14 +114,15 @@ public class MainActivity extends Activity implements MyException {
         @Override
         public void handleMessage(Message msg) {
             if (msg.what == 0) {
-                if (mInitExecTimes < mExecTimes) {
+                if (mClose) {
+                    finish();
+                } else if (mInitExecTimes < mExecTimes) {
                     mMyTimerUtil.setCurrentSecond(0);
-                    myLoadHeaderUrl(mReplaceTargetParams, mDataBean.getUrl());
+//                    Log.i("yzg", mReplaceTargetParams + "\n" + mDataBean.getUrl());
+//                    myLoadHeaderUrl(mReplaceTargetParams, mDataBean.getUrl());
+                    myLoadHeaderUrl(mReplaceUrlList, mDataBean.getUrl());
                 } else {
                     mTimer.cancel();
-                    if (mClose) {
-                        finish();
-                    }
                 }
             }
         }
@@ -134,11 +139,11 @@ public class MainActivity extends Activity implements MyException {
 
         firstRequest();
 
-        try {
-            cookieManager.setCookie(mDataBean.getUrl(), "");
-        } catch (NullPointerException e) {
-            Log.i(TAG, "NullPointerException--------->" + e.toString());
-        }
+//        try {
+//            cookieManager.setCookie(mDataBean.getUrl(), null);
+//        } catch (NullPointerException e) {
+//            Log.i(TAG, "NullPointerException--------->" + e.toString());
+//        }
         WebSettings webSettings = mWebView.getSettings();
         webSettings.setJavaScriptEnabled(true);
         webSettings.setLoadWithOverviewMode(true);
@@ -146,11 +151,14 @@ public class MainActivity extends Activity implements MyException {
         if (!mUserAgentValue.equals("")) {
             webSettings.setUserAgentString(mUserAgentValue);
         }
+        Log.i(TAG, "mW：" + mW);
+        Log.i(TAG, "mW：" + mH);
         mWebView.setLayoutParams(new ViewGroup.LayoutParams(mW, mH));
 
-        myLoadHeaderUrl(mReplaceTargetParams, mDataBean.getUrl());
+        myLoadHeaderUrl(mReplaceUrlList, mDataBean.getUrl());
         mWebView.setWebViewClient(mWebViewClient);
-        setContentView(mWebView);
+        setContentView(mWebView, new ViewGroup.LayoutParams(mW, mH));
+
     }
 
     private void initData() {
@@ -167,8 +175,8 @@ public class MainActivity extends Activity implements MyException {
         mRefererTarget = "";
 
         mReplaceUrlList = new ArrayList<>();
-        mReplaceParams = new HashMap<>();
-        mReplaceTargetParams = new HashMap<>();
+//        mReplaceParams = new HashMap<>();
+//        mReplaceTargetParams = new HashMap<>();
 
         mTimer = new Timer();
         mSucceedBean = new SucceedBean();
@@ -177,6 +185,9 @@ public class MainActivity extends Activity implements MyException {
         mIP = ObtainUtil.getIPAddress(this);
 
         mDataBean = new SucceedBean.DataBean();
+        if (mIMEI == null) {
+            mIMEI = "";
+        }
         mDataBean.setCid(mIMEI);
         mDataBean.setIp(mIP);
 
@@ -195,37 +206,48 @@ public class MainActivity extends Activity implements MyException {
                 String url = request.getUrl().toString().trim();
                 boolean isReplace = false;
                 if (!TextUtils.isEmpty(url)) {
-                    for (Map.Entry<String, String> map : mReplaceTargetParams.entrySet()) {
-                        if (map.getValue().equals(Constant.INDIRECT) || map.getValue().equals(Constant.ALL)) {
-                            for (Map.Entry<String, String> entry : mReplaceParams.entrySet()) {
-                                if (entry.getValue().equals(Constant.OS)) {
-                                    entry.setValue("0");
-                                } else if (entry.getValue().equals(Constant.IMEI)) {
-                                    entry.setValue(mIMEI);
-                                } else if (entry.getValue().equals(Constant.IDFA)) {
-                                    entry.setValue("");
-                                } else if (entry.getValue().equals(Constant.IP)) {
-                                    entry.setValue(mIP);
-                                }
-                                if (url.contains(entry.getKey())) {
-                                    url = url.replace(entry.getKey(), entry.getValue());
-                                    isReplace = true;
-                                }
+                    for (ReplaceUrlBean replaceUrlBean: mReplaceUrlList) {
+                        String target = replaceUrlBean.getTarget();
+                        String tag = replaceUrlBean.getTag();
+                        String value = replaceUrlBean.getValue();
+                        if(target.equals(Constant.DIRECT) ||target.equals(Constant.ALL)){
+                            if (url.contains(tag)) {
+                                url = url.replace(tag, value);
+                                Log.i(TAG, "url：" + url);
+                                isReplace = true;
                             }
                         }
                     }
-                    if (isReplace) {
-                        Log.i(TAG, "url：" + url);
-                        for (Map.Entry<String, String> entry : request.getRequestHeaders().entrySet()) {
-                            Log.i("entryName", "----------------->" + entry.getKey());
-                            Log.i("entryValue", "---------------->" + entry.getValue());
-                        }
+//                    for (Map.Entry<String, String> map : mReplaceTargetParams.entrySet()) {
+//                        if (map.getValue().equals(Constant.INDIRECT) || map.getValue().equals(Constant.ALL)) {
+//                            for (Map.Entry<String, String> entry : mReplaceParams.entrySet()) {
+//                                if (url.contains(entry.getKey())) {
+//                                    url = url.replace(entry.getKey(), entry.getValue());
+//                                    isReplace = true;
+//                                }
+//                            }
+//                        }
+//                    }
 
+                    Log.i("entryValue", "---------------->" + request.getRequestHeaders().get(Constant.REFERER));
+//                    for (Map.Entry<String, String> entry : request.getRequestHeaders().entrySet()) {
+//                        Log.i("entryName", "----------------->" + entry.getKey());
+//                        Log.i("entryValue", "---------------->" + entry.getValue());
+//                    }
+                    Log.i(TAG, "url：" + url);
+                    if (isReplace) {
                         StringBuilder stringBuilder = myLoadResource(mRefererTarget, url);
                         return new WebResourceResponse("", "", new ByteArrayInputStream(stringBuilder.toString().getBytes()));
                     } else {
-                        String myUrl = request.getUrl().toString();
-                        return getNewResponse(myUrl, request.getRequestHeaders());
+//                        return getNewResponse(url, request.getRequestHeaders());
+
+                        if (mRefererTarget.equals(Constant.DIRECT) || mRefererTarget.equals(Constant.ALL)) {
+                            request.getRequestHeaders().put(Constant.REFERER, mReferer);
+                            Log.i("entryValue", "---------------->" + request.getRequestHeaders().get(Constant.REFERER));
+
+                            return super.shouldInterceptRequest(view, request);
+                        }
+
                     }
                 }
                 return super.shouldInterceptRequest(view, request);
@@ -236,10 +258,30 @@ public class MainActivity extends Activity implements MyException {
                 String CookieStr = cookieManager.getCookie(url);
                 Log.i(TAG, "CookieStr：" + CookieStr);
 
+                Log.i(TAG, "uid:" + mUid);
+                mRxBytesEnd = TrafficStats.getUidRxBytes(mUid);
+                Log.i(TAG, "getUidRxBytes:" + TrafficStats.getUidRxBytes(mUid));
+                mTxBytesEnd = TrafficStats.getUidTxBytes(mUid);
+                Log.i(TAG, "getUidTxBytes:" + TrafficStats.getUidTxBytes(mUid));
+                mEndByte = mRxBytesEnd + mTxBytesEnd;
+                Log.i(TAG, "mEndByte:" + mEndByte);
+                Log.i(TAG, "FormetFileSize:" + ObtainUtil.FormetFileSize(mEndByte) + "");
+                Log.i(TAG, "mAllRx:" + (mRxBytesEnd - mRxBytesStart));
+                Log.i(TAG, "mAllTx:" + (mTxBytesEnd - mTxBytesStart));
+                Log.i(TAG, "mAll:" + (mEndByte - mStartByte));
+                Log.i(TAG, "FormetFileSize:" + ObtainUtil.FormetFileSize(mEndByte - mStartByte) + "");
+
                 mMyTimerUtil.setPause(true);
                 totalTime = mMyTimerUtil.getCurrentSecond();
                 mInitExecTimes++;
-                if(mTimer == null){
+
+                mSucceedBean.setFlow(Integer.parseInt((mEndByte - mStartByte) + ""));
+                mStartByte = mEndByte;
+                mDataBean.setIs_succeed(true);
+                mDataBean.setExec_time((mStayTime + totalTime));
+                mSucceedBean.setData(mDataBean);
+                if (succeed(mSucceedBean)) return;
+                if (mTimer == null) {
                     mTimer = new Timer();
                 }
                 mTimer.schedule(new TimerTask() {
@@ -255,17 +297,6 @@ public class MainActivity extends Activity implements MyException {
                     CookieManager.getInstance().removeAllCookie();
                     mClose = true;
                 }
-                mEndByte = TrafficStats.getUidRxBytes(ObtainUtil.getUid(MainActivity.this)) +
-                        TrafficStats.getUidTxBytes(ObtainUtil.getUid(MainActivity.this));
-                Log.i(TAG, mEndByte + "");
-                Log.i(TAG, ObtainUtil.FormetFileSize(mEndByte) + "");
-                Log.i(TAG, "traffic：" + (mEndByte - mStartByte));
-                mSucceedBean.setFlow(Integer.parseInt((mEndByte - mStartByte) + ""));
-                mStartByte = mEndByte;
-                mDataBean.setIs_succeed(true);
-                mDataBean.setExec_time((mStayTime + totalTime));
-                mSucceedBean.setData(mDataBean);
-                succeed(mSucceedBean);
                 super.onPageFinished(view, url);
             }
         };
@@ -275,31 +306,61 @@ public class MainActivity extends Activity implements MyException {
         mMyTimerUtil.setCurrentSecond(0);
         mMyTimerUtil.getMhandle().postDelayed(mMyTimerUtil.getTimeRunable(), 0);
         String json = new Gson().toJson(mRequestBean);
-        mStartByte = TrafficStats.getUidRxBytes(ObtainUtil.getUid(this)) +
-                TrafficStats.getUidTxBytes(ObtainUtil.getUid(this));
 
-        Log.i(TAG, mStartByte + "");
-        Log.i(TAG, ObtainUtil.FormetFileSize(mStartByte) + "");
-        String response = "";
-        try {
-            response = mOkHttpHelper.post(Constant.TASK_URL, json);
+        mUid = ObtainUtil.getUid(this);
+        Log.i(TAG, "mUid:" + mUid);
 
-        }catch (NullPointerException e){
-            Toast.makeText(MainActivity.this, "服务器异常~", Toast.LENGTH_SHORT).show();
-        }
-        if (response.contains("Server Error")) {
-            Toast.makeText(MainActivity.this, "Server Error~", Toast.LENGTH_SHORT).show();
+        mRxBytesStart = TrafficStats.getUidRxBytes(mUid);
+        Log.i(TAG, "getUidRxBytes:" + TrafficStats.getUidRxBytes(mUid));
+        mTxBytesStart = TrafficStats.getUidTxBytes(mUid);
+        Log.i(TAG, "getUidTxBytes:" + TrafficStats.getUidTxBytes(mUid));
+        mStartByte = mRxBytesStart + mTxBytesStart;
+        Log.i(TAG, "mStartByte:" + mStartByte);
+        Log.i(TAG, "FormetFileSize:" + ObtainUtil.FormetFileSize(mStartByte) + "");
+//        String response = "";
+//        try {
+//            response = mOkHttpHelper.post(Constant.TASK_URL, json);
+//
+//        } catch (NullPointerException e) {
+//            Toast.makeText(MainActivity.this, "服务器异常~", Toast.LENGTH_SHORT).show();
+//            mMyTimerUtil.setPause(true);
+//            finish();
+//            return;
+//        }
+//        Log.i(TAG, "response：" + response);
+//        if (response.contains("Server Error")) {
+//            Toast.makeText(MainActivity.this, "Server Error~", Toast.LENGTH_SHORT).show();
+//            mMyTimerUtil.setPause(true);
+//            finish();
+//            return;
+//        }
+//        Log.i(TAG, "response：" + response);
+//        if (response.contains(" HTTP 404")) {
+//            Toast.makeText(MainActivity.this, "服务器异常~", Toast.LENGTH_SHORT).show();
+//            mMyTimerUtil.setPause(true);
+//            finish();
+//            return;
+//        }
+
+        String response = mOkHttpHelper.post(Constant.TASK_URL, json);
+        RecordLog("taskResponse：" + response);
+        if (response.equals("")) {
+//            Toast.makeText(MainActivity.this, "服务器异常~", Toast.LENGTH_SHORT).show();
             mMyTimerUtil.setPause(true);
+            finish();
             return;
         }
-        Log.i(TAG,"response："+response);
-        if(response.contains(" HTTP 404")){
-            Toast.makeText(MainActivity.this, "服务器异常~", Toast.LENGTH_SHORT).show();
+        //接收网络数据
+        TaskBean mTaskBean = new Gson().fromJson(response, TaskBean.class);
+        if (mTaskBean.getData() == null) {
+//            Toast.makeText(MainActivity.this, "服务器数据异常~", Toast.LENGTH_SHORT).show();
+            mMyTimerUtil.setPause(true);
+            finish();
             return;
         }
-        mTaskBean = new Gson().fromJson(response, TaskBean.class);
-        if (mTaskBean == null) {
-            Toast.makeText(MainActivity.this, "服务器异常~", Toast.LENGTH_SHORT).show();
+        if(mTaskBean.getTaskstatus() == 1){
+            mMyTimerUtil.setPause(true);
+            finish();
             return;
         }
         TaskBean.DataBean.MessageBean messageBean = mTaskBean.getData().getMessage();
@@ -312,7 +373,6 @@ public class MainActivity extends Activity implements MyException {
 
         if (!TextUtils.isEmpty(messageBean.getUa())) {
             mUserAgentValue = messageBean.getUa();
-//            mHeaderParams.put(Constant.USER_AGENT, messageBean.getUa());
         }
         int refererSize = messageBean.getReferer() == null ? 0 : messageBean.getReferer().getValues().size();
         if (refererSize > 0) initReplaceReferer(messageBean.getReferer(), refererSize);
@@ -326,21 +386,29 @@ public class MainActivity extends Activity implements MyException {
         mDataBean.setUrl(messageBean.getExec_code() + "");
     }
 
-    private void succeed(SucceedBean succeedBean) {
+    private boolean succeed(SucceedBean succeedBean) {
         String json = new Gson().toJson(succeedBean);
         String response = mOkHttpHelper.post(Constant.REPORT_URL, json);
-        Log.i(TAG, response);
+        Log.i(TAG, "response：" + response);
+        RecordLog("reportResponse：" + response);
+        RespomseSuccessBean respomseSuccessBean = new Gson().fromJson(response, RespomseSuccessBean.class);
+        if (response.equals("")) {
+//            Toast.makeText(MainActivity.this, "服务器异常~", Toast.LENGTH_SHORT).show();
+            return true;
+        }
+        if (1 == respomseSuccessBean.getTaskstatus()) {
+            return true;
+        }
+        return false;
+
     }
 
     private void initReplaceReferer(TaskBean.DataBean.MessageBean.RefererBean refererBean, int refererSize) {
         //todo 随机生成
         int randomNumber = RandomSelectionUtil.getRandomNumber(0, refererSize);
         mReferer = refererBean.getValues().get(randomNumber);
-        Log.i(TAG, "initReplaceReferer：mReferer--------------------->" + mReferer);
         mRefererParams.put(Constant.REFERER, mReferer);
-        Log.i(TAG, "mHeaderParams：put--------------------->" + mRefererParams.toString());
         mRefererTarget = refererBean.getTarget();
-        Log.i(TAG, "initReplaceReferer：mRefererTarget--------------------->" + mRefererTarget);
     }
 
     private void initReplaceUrlParems(List<TaskBean.DataBean.MessageBean.ReplaceBean> replaceBeanList) {
@@ -349,8 +417,8 @@ public class MainActivity extends Activity implements MyException {
             String value = replaceBean.getValue();
             String target = replaceBean.getTarget();
             mReplaceUrlList.add(new ReplaceUrlBean(tag, value, target));
-            mReplaceParams.put(tag, value);
-            mReplaceTargetParams.put(tag, target);
+//            mReplaceParams.put(tag, value);
+//            mReplaceTargetParams.put(tag, target);
         }
     }
 
@@ -358,10 +426,24 @@ public class MainActivity extends Activity implements MyException {
         url = myReplaceParams(mReplaceTargetParams, url);
         if (mRefererTarget.equals(Constant.DIRECT) || mRefererTarget.equals(Constant.ALL)) {
             if (mLoadType.equals(Constant.URL_JUMP)) {
-                Log.i(TAG, "mHeaderParams：mLoadType--------------------->" + new Gson().toJson(mRefererParams));
+                mRefererParams.put(Constant.REFERER, mReferer);
                 mWebView.loadUrl(url, mRefererParams);
 //                mRefererParams.put(Constant.REFERER,mReferer);
-                Log.i(TAG, "mHeaderParams：mLoadType2--------------------->" + new Gson().toJson(mRefererParams));
+            } else {
+                mWebView.loadDataWithBaseURL(null, url, "application/json", "utf-8", null);
+            }
+        } else {
+            mWebView.loadUrl(url);
+        }
+    }
+
+    private void myLoadHeaderUrl(List<ReplaceUrlBean> list, String url) {
+        url = myReplaceParams(list, url);
+        if (mRefererTarget.equals(Constant.DIRECT) || mRefererTarget.equals(Constant.ALL)) {
+            if (mLoadType.equals(Constant.URL_JUMP)) {
+                mRefererParams.put(Constant.REFERER, mReferer);
+                mWebView.loadUrl(url, mRefererParams);
+//                mRefererParams.put(Constant.REFERER,mReferer);
             } else {
                 mWebView.loadDataWithBaseURL(null, url, "application/json", "utf-8", null);
             }
@@ -381,8 +463,8 @@ public class MainActivity extends Activity implements MyException {
             httpURLConnection.setReadTimeout(10 * 1000);
             if (targetHeader.equals(Constant.INDIRECT) || targetHeader.equals(Constant.ALL)) {
                 httpURLConnection.setRequestProperty(Constant.REFERER, mReferer);
-            } else{
-                httpURLConnection.setRequestProperty(Constant.REFERER,mDataBean.getUrl());
+            } else {
+                httpURLConnection.setRequestProperty(Constant.REFERER, mDataBean.getUrl());
             }
             if (!mUserAgentValue.equals("")) {
                 httpURLConnection.setRequestProperty(Constant.USER_AGENT, mUserAgentValue);
@@ -408,19 +490,26 @@ public class MainActivity extends Activity implements MyException {
         String realUrl = url;
         for (Map.Entry<String, String> map : mReplaceTargetParams.entrySet()) {
             if (map.getValue().equals(Constant.DIRECT) || map.getValue().equals(Constant.ALL)) {
-                for (Map.Entry<String, String> entry : mReplaceParams.entrySet()) {
-                    if (entry.getValue().equals(Constant.OS)) {
-                        entry.setValue("0");
-                    } else if (entry.getValue().equals(Constant.IMEI)) {
-                        entry.setValue(mIMEI);
-                    } else if (entry.getValue().equals(Constant.IDFA)) {
-                        entry.setValue("");
-                    } else if (entry.getValue().equals(Constant.IP)) {
-                        entry.setValue(mIP);
-                    }
-                    if (url.contains(entry.getKey())) {
-                        realUrl = url.replace(entry.getKey(), entry.getValue());
-                    }
+//                for (Map.Entry<String, String> entry : mReplaceParams.entrySet()) {
+//                    if (url.contains(entry.getKey())) {
+//                        realUrl = url.replace(entry.getKey(), entry.getValue());
+//                    }
+//                }
+            }
+        }
+        Log.i("realUrl", "realUrl" + realUrl);
+        return realUrl;
+    }
+
+    private String myReplaceParams(List<ReplaceUrlBean> list, String url) {
+        String realUrl = url;
+        for (ReplaceUrlBean replaceUrlBean: list) {
+            String target = replaceUrlBean.getTarget();
+            String tag = replaceUrlBean.getTag();
+            String value = replaceUrlBean.getValue();
+            if(target.equals(Constant.DIRECT) ||target.equals(Constant.ALL)){
+                if (url.contains(tag)) {
+                    realUrl = url.replace(tag, value);
                 }
             }
         }
@@ -457,34 +546,55 @@ public class MainActivity extends Activity implements MyException {
         super.onDestroy();
     }
 
-    private WebResourceResponse getNewResponse(String url, Map<String, String> headers) {
-        try {
-            OkHttpClient httpClient = new OkHttpClient();
-            Request.Builder builder = new Request.Builder().url(url.trim()).addHeader(Constant.REFERER,mReferer);
-            Set<String> keySet = headers.keySet();
-            for (String key : keySet) {
-                builder.addHeader(key, headers.get(key));
-            }
-            Request request = builder.build();
-            final Response response = httpClient.newCall(request).execute();
-            String conentType = response.header("Content-Type", response.body().contentType().type());
-            String temp = conentType.toLowerCase();
-            if (temp.contains("charset=utf-8")) {
-                conentType = conentType.replaceAll("(?i)" + "charset=utf-8", "");
-                //不区分大小写的替换
-            }
-            if (conentType.contains(";")) {
-                conentType = conentType.replaceAll(";", "");
-                conentType = conentType.trim();
-            }
-            return new WebResourceResponse(conentType, response.header("Content-Encoding", "utf-8"), response.body().byteStream());
-        } catch (Exception e) {
-            return null;
-        }
-    }
+//    private WebResourceResponse getNewResponse(String url, Map<String, String> headers) {
+//        try {
+//            OkHttpClient httpClient = new OkHttpClient();
+//            Request.Builder builder = new Request.Builder().url(url.trim()).addHeader(Constant.REFERER, mReferer);
+////            Request.Builder builder = new Request.Builder().url(url.trim());
+//            Set<String> keySet = headers.keySet();
+//            for (String key : keySet) {
+//                builder.addHeader(key, headers.get(key));
+//            }
+//            Request request = builder.build();
+//            final Response response = httpClient.newCall(request).execute();
+//            String conentType = response.header("Content-Type", response.body().contentType().type());
+//            String temp = conentType.toLowerCase();
+//            if (temp.contains("charset=utf-8")) {
+//                conentType = conentType.replaceAll("(?i)" + "charset=utf-8", "");
+//                //不区分大小写的替换
+//            }
+//            if (conentType.contains(";")) {
+//                conentType = conentType.replaceAll(";", "");
+//                conentType = conentType.trim();
+//            }
+//            InputStream data = response.body().byteStream();
+//            Log.i(TAG, "index:" + data.toString().length());
+//            return new WebResourceResponse(conentType, response.header("Content-Encoding", "utf-8"), data);
+//        } catch (Exception e) {
+//            return null;
+//        }
+//    }
 
     @Override
     public void show(String str) {
         Toast.makeText(MainActivity.this, str, Toast.LENGTH_SHORT).show();
+    }
+
+    private void RecordLog(String sb){
+        @SuppressLint("SimpleDateFormat") DateFormat df = new SimpleDateFormat("yyyyMMddHHmmssSSS");
+        try {
+            String fileName = String.format("log-%s.log", df.format(new Date(System.currentTimeMillis())));
+            if (Environment.MEDIA_MOUNTED.equals(Environment.getExternalStorageState())) {
+                @SuppressLint("SdCardPath") String path = "/sdcard/multiThread/log/";
+                File dir = new File(path);
+                if (!dir.exists())
+                    dir.mkdirs();
+                FileOutputStream fos = new FileOutputStream(path + fileName);
+                fos.write(sb.getBytes());
+                fos.close();
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "an error occured while writing file...", e);
+        }
     }
 }
