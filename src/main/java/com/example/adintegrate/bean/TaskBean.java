@@ -9,10 +9,9 @@ import java.util.List;
  */
 public class TaskBean {
 
-
     /**
      * taskstatus : 0
-     * data : {"status":200,"message":{"exec_type":"imp_url","exec_code":"http://active.bjddcy.com/rtc/rand_req_test.php","ua":"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_12_6) AppleWebKit/604.4.7 (KHTML, like Gecko) Version/11.0.2 Safari/604.4.7","exec_times":"6","tid":"2","resolution":{"h":900,"w":1440},"stay_time":"60","app_name":"","referer":"https://www.baidu.com"}}
+     * data : {"status":200,"message":{"exec_type":"imp_url","replace":[{"value":"172.16.0.10","target":"ALL","tag":"__IP__"},{"value":"0","target":"ALL","tag":"__OS__"},{"value":"356759048293097","target":"ALL","tag":"__IMEI__"}],"exec_code":["http://gogo-cd.com/impression.html","http://gogo-cd.com/impression.html?w=1"],"ua":"Mozilla/5.0 (Linux; U; Android 4.2; zh-CN; HUAWEI Y511-U10 Build/HUAWEIY511-U10) AppleWebKit/533.1 (KHTML, like Gecko) Version/4.0 Mobile Safari/533.1","exec_times":"5","ignore_list":["*.jpeg","https://pics4.baidu.com/feed/*"],"tid":"8","mock_url":"","stay_time":{"min":"10","max":"50"},"resolution":{"h":"720","w":"1280"},"referer":{"target":"DIRECT","values":["http://www.sohu.com/","http://www.zol.com.cn/","http://www.autohome.com.cn/"]}}}
      */
 
     private int taskstatus;
@@ -37,7 +36,7 @@ public class TaskBean {
     public static class DataBean {
         /**
          * status : 200
-         * message : {"exec_type":"imp_url","exec_code":"http://active.bjddcy.com/rtc/rand_req_test.php","ua":"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_12_6) AppleWebKit/604.4.7 (KHTML, like Gecko) Version/11.0.2 Safari/604.4.7","exec_times":"6","tid":"2","resolution":{"h":900,"w":1440},"stay_time":"60","app_name":"","referer":"https://www.baidu.com"}
+         * message : {"exec_type":"imp_url","replace":[{"value":"172.16.0.10","target":"ALL","tag":"__IP__"},{"value":"0","target":"ALL","tag":"__OS__"},{"value":"356759048293097","target":"ALL","tag":"__IMEI__"}],"exec_code":["http://gogo-cd.com/impression.html","http://gogo-cd.com/impression.html?w=1"],"ua":"Mozilla/5.0 (Linux; U; Android 4.2; zh-CN; HUAWEI Y511-U10 Build/HUAWEIY511-U10) AppleWebKit/533.1 (KHTML, like Gecko) Version/4.0 Mobile Safari/533.1","exec_times":"5","ignore_list":["*.jpeg","https://pics4.baidu.com/feed/*"],"tid":"8","mock_url":"","stay_time":{"min":"10","max":"50"},"resolution":{"h":"720","w":"1280"},"referer":{"target":"DIRECT","values":["http://www.sohu.com/","http://www.zol.com.cn/","http://www.autohome.com.cn/"]}}
          */
 
         private int status;
@@ -61,38 +60,30 @@ public class TaskBean {
 
         public static class MessageBean {
             /**
-             * tid : 12338
              * exec_type : imp_url
-             * exec_code : http://www.baidu.com
-             * exec_times : 6
-             * stay_time : 60
-             * referer : {"values":["http://g.cn","https://www.cctv.com"],"target":"ALL"}
-             * ua :
-             * device_id : {"imei":"902376503427590432","idfa":"idfa2393-0983248-394903-32948"}
-             * app_name : mojitianqi
-             * resolution : {"w":"720","h":"1080"}
-             * replace : [{"tag":"{ip}","value":"__IP__","target":"DIRECT"},{"tag":"{{UUID}}","value":"8jer23Feopsr90234eQEWr0923","target":"INDIRECT"},{"tag":"{{_os_}}","value":"__OS__","target":"ALL"}]
+             * replace : [{"value":"172.16.0.10","target":"ALL","tag":"__IP__"},{"value":"0","target":"ALL","tag":"__OS__"},{"value":"356759048293097","target":"ALL","tag":"__IMEI__"}]
+             * exec_code : ["http://gogo-cd.com/impression.html","http://gogo-cd.com/impression.html?w=1"]
+             * ua : Mozilla/5.0 (Linux; U; Android 4.2; zh-CN; HUAWEI Y511-U10 Build/HUAWEIY511-U10) AppleWebKit/533.1 (KHTML, like Gecko) Version/4.0 Mobile Safari/533.1
+             * exec_times : 5
+             * ignore_list : ["*.jpeg","https://pics4.baidu.com/feed/*"]
+             * tid : 8
+             * mock_url :
+             * stay_time : {"min":"10","max":"50"}
+             * resolution : {"h":"720","w":"1280"}
+             * referer : {"target":"DIRECT","values":["http://www.sohu.com/","http://www.zol.com.cn/","http://www.autohome.com.cn/"]}
              */
 
-            private String tid;
             private String exec_type;
-            private String exec_code;
-            private String exec_times;
-            private String stay_time;
-            private RefererBean referer;
             private String ua;
-            private DeviceIdBean device_id;
-            private String app_name;
+            private String exec_times;
+            private String tid;
+            private String mock_url;
+            private StayTimeBean stay_time;
             private ResolutionBean resolution;
+            private RefererBean referer;
             private List<ReplaceBean> replace;
-
-            public String getTid() {
-                return tid;
-            }
-
-            public void setTid(String tid) {
-                this.tid = tid;
-            }
+            private List<String> exec_code;
+            private List<String> ignore_list;
 
             public String getExec_type() {
                 return exec_type;
@@ -100,38 +91,6 @@ public class TaskBean {
 
             public void setExec_type(String exec_type) {
                 this.exec_type = exec_type;
-            }
-
-            public String getExec_code() {
-                return exec_code;
-            }
-
-            public void setExec_code(String exec_code) {
-                this.exec_code = exec_code;
-            }
-
-            public String getExec_times() {
-                return exec_times;
-            }
-
-            public void setExec_times(String exec_times) {
-                this.exec_times = exec_times;
-            }
-
-            public String getStay_time() {
-                return stay_time;
-            }
-
-            public void setStay_time(String stay_time) {
-                this.stay_time = stay_time;
-            }
-
-            public RefererBean getReferer() {
-                return referer;
-            }
-
-            public void setReferer(RefererBean referer) {
-                this.referer = referer;
             }
 
             public String getUa() {
@@ -142,20 +101,36 @@ public class TaskBean {
                 this.ua = ua;
             }
 
-            public DeviceIdBean getDevice_id() {
-                return device_id;
+            public String getExec_times() {
+                return exec_times;
             }
 
-            public void setDevice_id(DeviceIdBean device_id) {
-                this.device_id = device_id;
+            public void setExec_times(String exec_times) {
+                this.exec_times = exec_times;
             }
 
-            public String getApp_name() {
-                return app_name;
+            public String getTid() {
+                return tid;
             }
 
-            public void setApp_name(String app_name) {
-                this.app_name = app_name;
+            public void setTid(String tid) {
+                this.tid = tid;
+            }
+
+            public String getMock_url() {
+                return mock_url;
+            }
+
+            public void setMock_url(String mock_url) {
+                this.mock_url = mock_url;
+            }
+
+            public StayTimeBean getStay_time() {
+                return stay_time;
+            }
+
+            public void setStay_time(StayTimeBean stay_time) {
+                this.stay_time = stay_time;
             }
 
             public ResolutionBean getResolution() {
@@ -166,6 +141,14 @@ public class TaskBean {
                 this.resolution = resolution;
             }
 
+            public RefererBean getReferer() {
+                return referer;
+            }
+
+            public void setReferer(RefererBean referer) {
+                this.referer = referer;
+            }
+
             public List<ReplaceBean> getReplace() {
                 return replace;
             }
@@ -174,10 +157,78 @@ public class TaskBean {
                 this.replace = replace;
             }
 
+            public List<String> getExec_code() {
+                return exec_code;
+            }
+
+            public void setExec_code(List<String> exec_code) {
+                this.exec_code = exec_code;
+            }
+
+            public List<String> getIgnore_list() {
+                return ignore_list;
+            }
+
+            public void setIgnore_list(List<String> ignore_list) {
+                this.ignore_list = ignore_list;
+            }
+
+            public static class StayTimeBean {
+                /**
+                 * min : 10
+                 * max : 50
+                 */
+
+                private String min;
+                private String max;
+
+                public String getMin() {
+                    return min;
+                }
+
+                public void setMin(String min) {
+                    this.min = min;
+                }
+
+                public String getMax() {
+                    return max;
+                }
+
+                public void setMax(String max) {
+                    this.max = max;
+                }
+            }
+
+            public static class ResolutionBean {
+                /**
+                 * h : 720
+                 * w : 1280
+                 */
+
+                private String h;
+                private String w;
+
+                public String getH() {
+                    return h;
+                }
+
+                public void setH(String h) {
+                    this.h = h;
+                }
+
+                public String getW() {
+                    return w;
+                }
+
+                public void setW(String w) {
+                    this.w = w;
+                }
+            }
+
             public static class RefererBean {
                 /**
-                 * values : ["http://g.cn","https://www.cctv.com"]
-                 * target : ALL
+                 * target : DIRECT
+                 * values : ["http://www.sohu.com/","http://www.zol.com.cn/","http://www.autohome.com.cn/"]
                  */
 
                 private String target;
@@ -200,76 +251,16 @@ public class TaskBean {
                 }
             }
 
-            public static class DeviceIdBean {
-                /**
-                 * imei : 902376503427590432
-                 * idfa : idfa2393-0983248-394903-32948
-                 */
-
-                private String imei;
-                private String idfa;
-
-                public String getImei() {
-                    return imei;
-                }
-
-                public void setImei(String imei) {
-                    this.imei = imei;
-                }
-
-                public String getIdfa() {
-                    return idfa;
-                }
-
-                public void setIdfa(String idfa) {
-                    this.idfa = idfa;
-                }
-            }
-
-            public static class ResolutionBean {
-                /**
-                 * w : 720
-                 * h : 1080
-                 */
-
-                private String w;
-                private String h;
-
-                public String getW() {
-                    return w;
-                }
-
-                public void setW(String w) {
-                    this.w = w;
-                }
-
-                public String getH() {
-                    return h;
-                }
-
-                public void setH(String h) {
-                    this.h = h;
-                }
-            }
-
             public static class ReplaceBean {
                 /**
-                 * tag : {ip}
-                 * value : __IP__
-                 * target : DIRECT
+                 * value : 172.16.0.10
+                 * target : ALL
+                 * tag : __IP__
                  */
 
-                private String tag;
                 private String value;
                 private String target;
-
-                public String getTag() {
-                    return tag;
-                }
-
-                public void setTag(String tag) {
-                    this.tag = tag;
-                }
+                private String tag;
 
                 public String getValue() {
                     return value;
@@ -285,6 +276,14 @@ public class TaskBean {
 
                 public void setTarget(String target) {
                     this.target = target;
+                }
+
+                public String getTag() {
+                    return tag;
+                }
+
+                public void setTag(String tag) {
+                    this.tag = tag;
                 }
             }
         }

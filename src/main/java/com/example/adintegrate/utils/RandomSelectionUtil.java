@@ -1,7 +1,5 @@
 package com.example.adintegrate.utils;
 
-import com.example.adintegrate.network.Constant;
-
 import java.util.Random;
 
 /**

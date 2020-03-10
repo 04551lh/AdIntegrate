@@ -28,7 +28,7 @@ public class Constant {
     //imp_url
     public static final String URL_JUMP = "imp_url";
     //html/js
-    public static final String HTML_JS = "html/js";
+    public static final String HTML_JS = "imp_html";
     //求情头部替换
     public static final String USER_AGENT = "User-Agent";
     public static final String REFERER = "Referer";

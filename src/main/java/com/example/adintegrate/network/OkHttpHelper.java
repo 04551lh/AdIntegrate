@@ -5,10 +5,14 @@ import android.os.Build;
 import android.util.Log;
 
 import com.example.adintegrate.utils.MyException;
+import com.google.gson.JsonSyntaxException;
 
 import org.jetbrains.annotations.NotNull;
 
 import java.io.IOException;
+import java.net.ConnectException;
+import java.net.SocketTimeoutException;
+import java.net.UnknownHostException;
 import java.util.concurrent.TimeUnit;
 
 import okhttp3.OkHttpClient;
@@ -80,16 +84,22 @@ public class OkHttpHelper {
                 return response.body().string();
             }
         }
-//        catch (SocketTimeoutException e) {
-//            myException.show("服务器异常，请重新再试~"+e.toString());
-//            e.printStackTrace();
-//        } catch (UnknownHostException e) {
-//            myException.show("服务器异常，请重新再试~"+e.toString());
-//            e.printStackTrace();
-//        } catch (ConnectException e) {
-//            myException.show("服务器异常，请重新再试~"+e.toString());
-//            e.printStackTrace();
-//        }
+        catch (JsonSyntaxException e) {
+            myException.show("服务器异常，请重新再试~"+e.toString());
+            e.printStackTrace();
+        } catch (IllegalStateException e) {
+            myException.show("服务器异常，请重新再试~"+e.toString());
+            e.printStackTrace();
+        }catch (SocketTimeoutException e) {
+            myException.show("服务器异常，请重新再试~"+e.toString());
+            e.printStackTrace();
+        } catch (UnknownHostException e) {
+            myException.show("服务器异常，请重新再试~"+e.toString());
+            e.printStackTrace();
+        } catch (ConnectException e) {
+            myException.show("服务器异常，请重新再试~"+e.toString());
+            e.printStackTrace();
+        }
 
         catch (IOException e) {
             myException.show("服务器异常，请重新再试~"+e.toString());

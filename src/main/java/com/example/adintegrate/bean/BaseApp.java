@@ -14,6 +14,6 @@ public class BaseApp extends Application {
     @Override
     public void onCreate() {
         super.onCreate();
-        CrashReport.initCrashReport(getApplicationContext(), "2d31453a6a", false);
+        CrashReport.initCrashReport(getApplicationContext(), "2d31453a6a", true);
     }
 }

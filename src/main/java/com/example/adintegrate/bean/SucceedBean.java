@@ -43,18 +43,18 @@ public class SucceedBean implements Serializable {
          * url : http://baidu.com
          */
 
-        private int tid;
+        private String tid;
         private String cid;
         private String ip;
         private boolean is_succeed;
         private int exec_time;
         private String url;
 
-        public int getTid() {
+        public String getTid() {
             return tid;
         }
 
-        public void setTid(int tid) {
+        public void setTid(String tid) {
             this.tid = tid;
         }
 

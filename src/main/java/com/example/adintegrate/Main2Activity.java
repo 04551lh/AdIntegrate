@@ -12,13 +12,14 @@ import com.example.adintegrate.utils.RandomSelectionUtil;
 
 public class Main2Activity extends Activity {
 
-    private TextView count;
-    private int sum = 1;
-
-    private int number;
-    private int timer = 0;
-    final Handler mhandle = new Handler();
+    private static String TAG = "Main2Activity";
+    private TextView mTvCount;
+    private int mSum = 1;
+    private int mNumber;
+    private int mTimer = 0;
+    final Handler mHandler = new Handler();
     private boolean isFirst = false;
+    private Runnable mRunnable;
 
     @Override
     protected void onResume() {
@@ -27,43 +28,48 @@ public class Main2Activity extends Activity {
             isFirst = true;
             return;
         }
-        number = RandomSelectionUtil.getRandomNumber(300, 900);
-        Log.i("Main2Activity", "随机数：" + number);
-       new Runnable() {
+        mNumber = RandomSelectionUtil.getRandomNumber(300, 900);
+        Log.i(TAG, "随机数：" + mNumber);
+        mRunnable = new Runnable() {
             @Override
             public void run() {
-                timer = timer + 1;
-                Log.i("Main2Activity", "时间：" + timer);
-                if (timer == number) {
+                mTimer = mTimer + 1;
+                if(mTimer > 900){
+                    mTimer =0;
+                }
+                Log.i(TAG, "时间：" + mTimer);
+                if (mTimer == mNumber) {
                     startActivity(new Intent(Main2Activity.this, MainActivity.class));
-                    timer = 0;
+                    mTimer = 0;
                     return;
                 }
                 //递归调用本runable对象，实现每隔一秒一次执行任务
-                mhandle.postDelayed(this, 1000);
+                mHandler.postDelayed(this, 1000);
             }
-        }.run();
-        sum++;
-        count.setText("次数：" + sum);
+        };
+        mRunnable.run();
+        mSum++;
+        mTvCount.setText("次数：" + mSum);
     }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main2);
-        count = findViewById(R.id.count);
-        count.setText("次数：" + sum);
-//        Intent intent = new Intent(Intent.ACTION_VIEW);
-//        String packageName = "com.example.wifi"; //另一个app的包名
-//        String className = "com.example.wifi.service.MyService"; //另一个app要启动的组件的全路径名
-//        intent.setClassName(packageName, className);startService(intent);//或者bindService(intent, mConnection, Context.BIND_AUTO_CREATE); 都能启动
-
+        mTvCount = findViewById(R.id.count);
+        mTvCount.setText("次数：" + mSum);
         startActivity(new Intent(Main2Activity.this, MainActivity.class));
     }
 
     @Override
+    protected void onPause() {
+        super.onPause();
+    }
+
+
+    @Override
     protected void onDestroy() {
         super.onDestroy();
-        timer = number;
+        mTimer = mNumber;
     }
 }
